@@ -550,7 +550,7 @@ public class ChartPanel extends JPanel implements ChartChangeListener,
      *
      * @since 1.0.13
      */
-    private int panMask = InputEvent.CTRL_MASK;
+    private int zoomMask = InputEvent.CTRL_MASK;
 
     /**
      * A list of overlays for the panel.
@@ -759,12 +759,12 @@ public class ChartPanel extends JPanel implements ChartChangeListener,
         this.zoomOutlinePaint = Color.blue;
         this.zoomFillPaint = new Color(0, 0, 255, 63);
 
-        this.panMask = InputEvent.CTRL_MASK;
+        this.zoomMask = InputEvent.CTRL_MASK;
         // for MacOSX we can't use the CTRL key for mouse drags, see:
         // http://developer.apple.com/qa/qa2004/qa1362.html
         String osName = System.getProperty("os.name").toLowerCase();
         if (osName.startsWith("mac os x")) {
-            this.panMask = InputEvent.ALT_MASK;
+            this.zoomMask = InputEvent.ALT_MASK;
         }
 
         this.overlays = new java.util.ArrayList();
@@ -1833,7 +1833,22 @@ public class ChartPanel extends JPanel implements ChartChangeListener,
         }
         Plot plot = this.chart.getPlot();
         int mods = e.getModifiers();
-        if ((mods & this.panMask) == this.panMask) {
+        if ((mods & this.zoomMask) == this.zoomMask) {
+            if(this.zoomRectangle == null) {
+                Rectangle2D screenDataArea = getScreenDataArea(e.getX(), e.getY());
+                if (screenDataArea != null) {
+                    this.zoomPoint = getPointInRectangle(e.getX(), e.getY(),
+                            screenDataArea);
+                }
+                else {
+                    this.zoomPoint = null;
+                }
+            }
+        } else if (e.isPopupTrigger()) {
+            if (this.popup != null) {
+                displayPopupMenu(e.getX(), e.getY());
+            }
+        } else {
             // can we pan this plot?
             if (plot instanceof Pannable) {
                 Pannable pannable = (Pannable) plot;
@@ -1851,21 +1866,6 @@ public class ChartPanel extends JPanel implements ChartChangeListener,
                 }
                 // the actual panning occurs later in the mouseDragged() 
                 // method
-            }
-        }
-        else if (this.zoomRectangle == null) {
-            Rectangle2D screenDataArea = getScreenDataArea(e.getX(), e.getY());
-            if (screenDataArea != null) {
-                this.zoomPoint = getPointInRectangle(e.getX(), e.getY(),
-                        screenDataArea);
-            }
-            else {
-                this.zoomPoint = null;
-            }
-            if (e.isPopupTrigger()) {
-                if (this.popup != null) {
-                    displayPopupMenu(e.getX(), e.getY());
-                }
             }
         }
     }
@@ -1997,6 +1997,12 @@ public class ChartPanel extends JPanel implements ChartChangeListener,
     @Override
     public void mouseReleased(MouseEvent e) {
 
+        if (e.isPopupTrigger()) {
+            if (this.popup != null) {
+                displayPopupMenu(e.getX(), e.getY());
+            }
+        }
+
         // if we've been panning, we need to reset now that the mouse is 
         // released...
         if (this.panLast != null) {
@@ -2078,11 +2084,6 @@ public class ChartPanel extends JPanel implements ChartChangeListener,
 
         }
 
-        else if (e.isPopupTrigger()) {
-            if (this.popup != null) {
-                displayPopupMenu(e.getX(), e.getY());
-            }
-        }
 
     }
 
